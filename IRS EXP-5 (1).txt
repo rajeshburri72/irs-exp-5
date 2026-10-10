@@ -1,0 +1,51 @@
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.metrics import confusion_matrix
+import numpy as np
+categories = ['alt.atheism', 'comp.graphics', 'sci.space']
+newsgroups = fetch_20newsgroups(subset='all', categories=categories, remove=('headers', 'footers', 'quotes'))
+vectorizer = TfidfVectorizer(stop_words='english', max_df=0.5)
+x=vectorizer.fit_transform(newsgroups.data)
+k=len(categories)
+kmeans=KMeans(n_clusters=k, random_state=42, n_init='auto')
+kmeans.fit(x)
+labels_pred=kmeans.labels_
+labels_true = newsgroups.target
+def purity_score(y_true, y_pred):
+    contingency_matrix = confusion_matrix(y_true, y_pred)
+    return np.sum(np.amax(contingency_matrix, axis=0)) / np.sum(contingency_matrix)
+def precision_recall_fmeasure(y_true, y_pred):
+    unique_clusters = np.unique(y_pred)
+    precision_list = []
+    recall_list = []
+    fmeasure_list = []
+    for cluster in unique_clusters:
+      cluster_indices=np.where(y_pred==cluster)[0]
+      true_labels_in_cluster=y_true[cluster_indices]
+      if len(true_labels_in_cluster)==0:
+        continue
+      dominant_class=np.bincount(true_labels_in_cluster).argmax()
+      Tp=np.sum(true_labels_in_cluster==dominant_class)
+      FP=len(cluster_indices)-Tp
+      FN=np.sum(true_labels_in_cluster!=dominant_class)
+      precision=Tp/(Tp+FP) if (Tp+FP)>0 else 0
+      recall=Tp/(Tp+FN) if (Tp+FN)>0 else 0
+      fmeasure=(2*precision*recall)/(precision+recall) if (precision+recall)>0 else 0
+      precision_list.append(precision)
+      recall_list.append(recall)
+      fmeasure_list.append(fmeasure)
+    return np.mean(precision_list),np.mean(recall_list),np.mean(fmeasure_list)
+purity=purity_score(labels_true,labels_pred)
+precision,recall,fmeasure=precision_recall_fmeasure(labels_true,labels_pred)
+print(f"Purity: {purity:.4f}")
+print(f"Precision (macro-average):{precision:.4f}")
+print(f"Recall (macro-average):{recall:.4f}")
+print(f"F-measure (macro-average):{fmeasure:.4f}")
+
+
+OUTPUT:
+Purity: 0.6897
+Precision (macro-average):0.8185
+Recall (macro-average):0.8185
+F-measure (macro-average):0.8185
